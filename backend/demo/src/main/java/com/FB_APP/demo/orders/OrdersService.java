@@ -3,6 +3,8 @@ package com.FB_APP.demo.orders;
 import com.FB_APP.demo.entities.*;
 import com.FB_APP.demo.orders.dtos.AddOrderDto;
 import com.FB_APP.demo.orders.dtos.ClientOrderNameDto;
+import com.FB_APP.demo.orders.dtos.EditOrderDto;
+import com.FB_APP.demo.orders.responses.*;
 import com.FB_APP.demo.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -87,4 +89,141 @@ public class OrdersService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
+
+    public GetOrderByIdResponse getOrderById(Integer id) {
+        try {
+            Orders order = ordersRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order not found"));
+            return GetOrderByIdResponse.builder()
+                    .id(order.getId())
+                    .location(order.getLocation())
+                    .date(order.getDate())
+                    .time(order.getTime())
+                    .products(order.getProducts())
+                    .build();
+        } catch (Exception e) {
+
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+    public List< GetOrderContainingClientNameResponse> getOrderContainingClientName(String clientName) {
+        try {
+            logger.info("clientName: {}", clientName);
+           List<User> users = userRepository.findByNameContaining(clientName);
+           logger.info("users: {}", users);
+          return users.stream()
+                  .filter(user -> "CLIENT".equals(user.getRole()))
+                   .map(user -> {
+                       Client client = clientRepository.findByUserId(user.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Client not found"));
+                       List<Orders> orders = ordersRepository.findByClient(client);
+                       return GetOrderContainingClientNameResponse.builder()
+                               .clientName(user.getName())
+                               .orders(orders)
+                               .build();
+                   })
+                   .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+   public List<GetAllOrdersResponse>getAllOrders() {
+        try {
+            List<Orders> orders = ordersRepository.findAll();
+            return  orders.stream()
+                    .map(order -> {
+                        return GetAllOrdersResponse.builder()
+                                .orders(order)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+   }
+
+   public List<GetOrdersOfClientResponse> getOrdersOfClient() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication==null||!(authentication.getPrincipal() instanceof UserDetails)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            }
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found"));
+            if (!("CLIENT".equals(user.getRole()))) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authorized and is not a client");
+            }
+            Client client = clientRepository.findByUserId(user.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Client not found"));
+            List<Orders> orders = client.getOrders();
+            return orders.stream()
+                    .map(order -> {
+                        return GetOrdersOfClientResponse.builder()
+                                .order(order)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+   }
+
+    public EditOrderResponse editOrder(Integer id, EditOrderDto editOrderDto, Integer productId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            }
+
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found"));
+
+            if (!"CLIENT".equals(user.getRole())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authorized and is not a client");
+            }
+
+            Orders order = ordersRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order not found"));
+
+            if (!order.getClient().getUserId().equals(user.getId())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authorized and is not the client of the order");
+            }
+
+            editOrderDto.getLocation().ifPresent(order::setLocation);
+            editOrderDto.getDate().ifPresent(order::setDate);
+            editOrderDto.getTime().ifPresent(order::setTime);
+          Orders savedOrder = ordersRepository.save(order);
+         logger.info("savedOrder: {}", savedOrder);
+           if (editOrderDto.getNewProductId().isPresent()) {
+               Optional<Products> products = productsRepository.findById(editOrderDto.getNewProductId().get());
+
+               if (products.isPresent()) {
+                   logger.info("products: {}", products.get());
+                   List<OrderProducts> productsEdited = orderProductsRepository.findAllByProductId(productId);
+                   logger.info("productsEdited: {}", productsEdited);
+                   for (OrderProducts productEdited : productsEdited) {
+                       productEdited.setProductId(products.get().getId());
+                       logger.info("Old productEdited.setProductPrice(products.get().getProductPrice()): {}", productEdited.getProductPrice());
+                       productEdited.setProductPrice(products.get().getProductPrice());
+                       logger.info("NewproductEdited.setProductPrice(products.get().getProductPrice());: {}", productEdited.getProductPrice());
+                       productEdited.setQuantity(products.get().getQuantity());
+                       productEdited.setProductName(products.get().getProductName());
+                       orderProductsRepository.save(productEdited);
+                   }
+               }
+           }
+            return EditOrderResponse.builder()
+                    .client(order.getClient())
+                    .build();
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+
 }

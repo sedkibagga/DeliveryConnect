@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 @Service
 public class JwtService {
-    private static final String SECRET_KEY = "8A7FA76CDEEEB6181EF63C6523A8B7D8A7FA76CDEEEB6181EF63C6523A8B7D";
+    private static final String SECRET_KEY = "your secret key";
 
     private Claims extractAllClaims(String token) {
         return Jwts

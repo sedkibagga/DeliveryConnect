@@ -35,7 +35,7 @@ public class Client {
     @ToString.Exclude
     private List<Claims> claims = new ArrayList<>();
 
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY , orphanRemoval = true)
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.EAGER , orphanRemoval = true)
     @JsonManagedReference
     @ToString.Exclude
     private List<Orders> orders = new ArrayList<>();

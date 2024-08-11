@@ -1,5 +1,6 @@
 package com.FB_APP.demo.entities;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,8 +25,9 @@ public class Orders {
     @ToString.Exclude
     private Client client;
 
-    @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, fetch = FetchType.LAZY , orphanRemoval = true)
+    @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, fetch = FetchType.EAGER , orphanRemoval = true)
     @JsonManagedReference
+    @JsonIgnoreProperties("orders")
     @ToString.Exclude
     private List<OrderProducts> products = new ArrayList<>();
 

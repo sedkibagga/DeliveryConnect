@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/FB_DB
-    username: bagga
-    password: 3asfour25102212
+    username: your username
+    password: your password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

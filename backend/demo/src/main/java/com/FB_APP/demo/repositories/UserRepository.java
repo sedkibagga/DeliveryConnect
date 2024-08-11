@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     @NonNull
     Optional<User> findByName(String name);
-
+    @NonNull
     List<User> findByNameContaining(String name);
 
 }
